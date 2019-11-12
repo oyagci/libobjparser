@@ -1,0 +1,22 @@
+[
+    {
+        "arguments": [
+            "gcc",
+            "-c",
+            "-Wall",
+            "-Wextra",
+            "-g3",
+            "-I",
+            "glad/include",
+            "-I",
+            "inc/",
+            "-I",
+            "libft/includes",
+            "-o",
+            "src/main.o",
+            "src/main.c"
+        ],
+        "directory": "/home/oyagci/Projects/scop/lib/obj",
+        "file": "src/main.c"
+    }
+]
