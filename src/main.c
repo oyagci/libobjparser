@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include "libft.h"
+#include <errno.h>
 
 int	obj_load(t_obj *obj, char const *const filename)
 {
@@ -36,7 +37,6 @@ int	obj_load(t_obj *obj, char const *const filename)
 	read(fd, content, st.st_size);
 	content[st.st_size] = '\0';
 	obj->data = content;
-	obj_parse(obj);
 	return (0);
 }
 
@@ -111,20 +111,21 @@ int	obj_add_face(t_obj *obj, const char **fs)
 	}
 
 	face = malloc(sizeof(*face));
-	face->indices = malloc(sizeof(*face->indices) * nverts);
+	face->indices = 0;
 
 	i = 0;
 	while (i < nverts) {
-		face->indices[i].vert = 0;
-		face->indices[i].norm = 0;
-		face->indices[i].text = 0;
+		t_dlist	*elem = ft_dlstnew(NULL, 0);
+		t_face_indices *indices = malloc(sizeof(*indices));
+
+		elem->content = indices;
 
 		size_t j = 0;
 
 		// TODO: Refactor the stuff bellow. It's obviously bad.
 
 		// Parse digit
-		face->indices[i].vert = ft_atoi(fs[i]);
+		indices->vert = ft_atoi(fs[i]);
 
 		// Go to next digit
 		while (fs[i][j] != '\0' && fs[i][j] != '/')
@@ -138,7 +139,7 @@ int	obj_add_face(t_obj *obj, const char **fs)
 		}
 
 		// Parse digit
-		face->indices[i].text = ft_atoi(fs[i]);
+		indices->text = ft_atoi(fs[i]);
 
 		// Go to next digit
 		while (fs[i][j] != '\0' && fs[i][j] != '/')
@@ -152,17 +153,21 @@ int	obj_add_face(t_obj *obj, const char **fs)
 		}
 
 		// Parse digit
-		face->indices[i].norm = ft_atoi(fs[i]);
+		indices->norm = ft_atoi(fs[i]);
+		ft_dlstadd(&face->indices, elem);
 
 		i += 1;
 	}
 
 	fprintf(stderr, "F {\n");
-	for (size_t i = 0; i < nverts; i++) {
+	t_dlist *l = face->indices;
+	do {
+		t_face_indices *indices = l->content;
+
 		fprintf(stderr, "    { vert: %ld, norm: %ld, text: %ld }\n",
-			face->indices[i].vert, face->indices[i].norm,
-			face->indices[i].text);
-	}
+			indices->vert, indices->norm, indices->text);
+		l = l->next;
+	} while (l != face->indices);
 	fprintf(stderr, "}\n");
 
 	return (0);
@@ -192,4 +197,11 @@ int	obj_parse(t_obj *obj)
 		j += 1;
 	}
 	return (0);
+}
+
+/*
+** Ear Clipping algorithm to faces that are not only triangles.
+*/
+int obj_triangulate(t_obj *obj)
+{
 }

@@ -2,6 +2,7 @@
 # define OBJ_H
 
 # include <string.h>
+# include "libft.h"
 
 enum			e_obj_tok
 {
@@ -19,10 +20,6 @@ typedef struct	s_obj
 	struct s_list	*faces;
 }				t_obj;
 
-struct s_obj_parser
-{
-};
-
 typedef struct	s_vertex {
 	float	x;
 	float	y;
@@ -30,13 +27,14 @@ typedef struct	s_vertex {
 	float	w;
 }				t_vertex;
 
-typedef struct	s_face {
-	struct {
-		size_t	vert;
-		size_t	text;
-		size_t	norm;
-	}	*indices;
+typedef struct	s_face_indices {
+	size_t	vert;
+	size_t	text;
+	size_t	norm;
+}				t_face_indices;
 
+typedef struct	s_face {
+	t_dlist *indices;
 }				t_face;
 
 int		obj_load(t_obj *obj, char const *const filename);

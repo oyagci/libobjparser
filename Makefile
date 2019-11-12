@@ -26,3 +26,8 @@ fclean: clean
 	rm -f $(NAME)
 
 re: fclean all
+
+tests:
+	make -C tests tests
+
+.PHONY: tests
