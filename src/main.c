@@ -6,12 +6,39 @@
 #include <stdlib.h>
 #include "libft.h"
 #include <errno.h>
+#include <assert.h>
+
+void ft_dlstpush(t_dlist **lstp, t_dlist *elem)
+{
+	t_dlist	*lst;
+	t_dlist	*d;
+
+	lst = *lstp;
+	if (lst)
+	{
+		d = lst;
+		while (d && d->next && d->next != lst)
+			d = d->next;
+		elem->next = lst;
+		elem->prev = d;
+		d->next = elem;
+		lst->prev = elem;
+	}
+	else
+	{
+		*lstp = elem;
+		elem->next = 0;
+		elem->prev = 0;
+	}
+}
 
 int	obj_load(t_obj *obj, char const *const filename)
 {
 	int			fd;
 	struct stat	st;
 	char		*content;
+
+	memset(obj, 0, sizeof(*obj));
 
 	fd = open(filename, O_RDONLY);
 	if (fd < 0) {
@@ -22,7 +49,6 @@ int	obj_load(t_obj *obj, char const *const filename)
 		close(fd);
 		return (-1);
 	}
-	obj = malloc(sizeof(*obj));
 	if (!obj) {
 		perror("malloc");
 		return (-1);
@@ -37,6 +63,7 @@ int	obj_load(t_obj *obj, char const *const filename)
 	read(fd, content, st.st_size);
 	content[st.st_size] = '\0';
 	obj->data = content;
+	close(fd);
 	return (0);
 }
 
@@ -123,6 +150,8 @@ int	obj_add_face(t_obj *obj, const char **fs)
 		size_t j = 0;
 
 		// TODO: Refactor the stuff bellow. It's obviously bad.
+		//
+		ft_dlstpush(&face->indices, elem);
 
 		// Parse digit
 		indices->vert = ft_atoi(fs[i]);
@@ -154,21 +183,23 @@ int	obj_add_face(t_obj *obj, const char **fs)
 
 		// Parse digit
 		indices->norm = ft_atoi(fs[i]);
-		ft_dlstadd(&face->indices, elem);
+		fprintf(stderr, "!\n");
 
 		i += 1;
 	}
 
-	fprintf(stderr, "F {\n");
 	t_dlist *l = face->indices;
-	do {
-		t_face_indices *indices = l->content;
+	if (l) {
+		fprintf(stderr, "F {\n");
+		do {
+			t_face_indices *indices = l->content;
 
-		fprintf(stderr, "    { vert: %ld, norm: %ld, text: %ld }\n",
-			indices->vert, indices->norm, indices->text);
-		l = l->next;
-	} while (l != face->indices);
-	fprintf(stderr, "}\n");
+			fprintf(stderr, "  { vert: %ld, norm: %ld, text: %ld }\n",
+				indices->vert, indices->norm, indices->text);
+			l = l->next;
+		} while (l != face->indices);
+		fprintf(stderr, "}\n");
+	}
 
 	return (0);
 }
@@ -199,9 +230,8 @@ int	obj_parse(t_obj *obj)
 	return (0);
 }
 
-/*
-** Ear Clipping algorithm to faces that are not only triangles.
-*/
-int obj_triangulate(t_obj *obj)
+int	obj_triangulate(t_obj *obj)
 {
+	t_dlist *ears = NULL;
+	return (0);
 }

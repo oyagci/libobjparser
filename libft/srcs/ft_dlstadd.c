@@ -17,11 +17,18 @@ void			ft_dlstadd(t_dlist **alst, t_dlist *elem)
 	if (*alst)
 	{
 		elem->next = *alst;
+		elem->prev = (*alst)->prev;
 		(*alst)->prev = elem;
-		*alst = (*alst)->prev;
+
+		if (elem->prev) {
+			elem->prev->next = elem;
+		}
+		*alst = elem;
 	}
 	else
 	{
+		elem->next = NULL;
+		elem->prev = NULL;
 		*alst = elem;
 	}
 }

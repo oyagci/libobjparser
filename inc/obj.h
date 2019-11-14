@@ -39,5 +39,6 @@ typedef struct	s_face {
 
 int		obj_load(t_obj *obj, char const *const filename);
 int		obj_parse(t_obj *obj);
+int		obj_triangulate(t_obj *obj);
 
 #endif
