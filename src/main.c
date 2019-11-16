@@ -86,7 +86,7 @@ enum e_obj_tok	obj_kind(char const *const stok)
 	return (OBJ_NONE);
 }
 
-int	obj_add_vertice(t_obj *obj, char const **v)
+int	obj_add_vertice(t_list **vertlst, char const **v)
 {
 	char const *sx = v[0];
 	char const *sy = v[1];
@@ -117,11 +117,11 @@ int	obj_add_vertice(t_obj *obj, char const **v)
 	vert->z = z;
 	vert->w = w;
 
-	fprintf(stderr, "V { x: %.2f, y: %.2f, z: %.2f, w: %.2f }\n",
-		x, y, z, w);
+//	fprintf(stderr, "V { x: %.2f, y: %.2f, z: %.2f, w: %.2f }\n",
+//		x, y, z, w);
 
-	elem->content = v;
-	ft_lstpush(&obj->vertices, elem);
+	elem->content = vert;
+	ft_lstpush(vertlst, elem);
 
 	return (0);
 }
@@ -138,23 +138,18 @@ int	obj_add_face(t_obj *obj, const char **fs)
 	}
 
 	face = malloc(sizeof(*face));
-	face->indices = 0;
+	face->indices = malloc(sizeof(*face->indices) * nverts);
+	face->nverts = nverts;
 
 	i = 0;
 	while (i < nverts) {
-		t_dlist	*elem = ft_dlstnew(NULL, 0);
-		t_face_indices *indices = malloc(sizeof(*indices));
-
-		elem->content = indices;
-
 		size_t j = 0;
 
 		// TODO: Refactor the stuff bellow. It's obviously bad.
-		//
-		ft_dlstpush(&face->indices, elem);
 
 		// Parse digit
-		indices->vert = ft_atoi(fs[i]);
+		// index starts at 1 (I know...)
+		face->indices[i].vert = ft_atoi(fs[i]) - 1;
 
 		// Go to next digit
 		while (fs[i][j] != '\0' && fs[i][j] != '/')
@@ -168,7 +163,7 @@ int	obj_add_face(t_obj *obj, const char **fs)
 		}
 
 		// Parse digit
-		indices->text = ft_atoi(fs[i]);
+		face->indices[i].text = ft_atoi(fs[i]) - 1;
 
 		// Go to next digit
 		while (fs[i][j] != '\0' && fs[i][j] != '/')
@@ -182,42 +177,69 @@ int	obj_add_face(t_obj *obj, const char **fs)
 		}
 
 		// Parse digit
-		indices->norm = ft_atoi(fs[i]);
-		fprintf(stderr, "!\n");
+		face->indices[i].norm = ft_atoi(fs[i]) - 1;
 
 		i += 1;
 	}
 
-	t_dlist *l = face->indices;
-	if (l) {
-		fprintf(stderr, "F {\n");
-		do {
-			t_face_indices *indices = l->content;
+//	t_face_indices *indices = face->indices;
+//	i = 0;
+//	fprintf(stderr, "F {\n");
+//	while (i < face->nverts) {
+//		fprintf(stderr, "  { vert: %ld, norm: %ld, text: %ld }\n",
+//			indices[i].vert, indices[i].norm, indices[i].text);
+//		i++;
+//	}
+//	fprintf(stderr, "}\n");
 
-			fprintf(stderr, "  { vert: %ld, norm: %ld, text: %ld }\n",
-				indices->vert, indices->norm, indices->text);
-			l = l->next;
-		} while (l != face->indices);
-		fprintf(stderr, "}\n");
-	}
+	t_list	*elem = ft_lstnew(NULL, 0);
+	elem->content = face;
+	ft_lstpush(&obj->faces, elem);
 
 	return (0);
 }
 
+t_vertex	*vertlst_to_arr(t_list **vertlstp, size_t nvert)
+{
+	t_vertex	*vertices;
+	t_list		*vertlst;
+	size_t		i;
+
+	vertlst = *vertlstp;
+	vertices = malloc(sizeof(*vertices) * nvert);
+	i = 0;
+	while (i < nvert) {
+		memcpy(vertices + i, vertlst->content, sizeof(*vertices));
+		vertlst = vertlst->next;
+		i++;
+	}
+	return (vertices);
+}
+
+void	del_vertex(void *content,
+	size_t __attribute__((unused)) csize)
+{
+	free(content);
+}
+
 int	obj_parse(t_obj *obj)
 {
-	size_t	j;
+	size_t	i;
 	char	**lines;
 	char	**line;
+	size_t	nvert;
+	t_list	*vertlst;
 
+	vertlst = 0;
+	nvert = 0;
 	lines = ft_strsplit(obj->data, '\n');
-	j = 0;
-	while (lines[j] != 0) {
-		line = ft_strsplit(lines[j], ' ');
-
+	i = 0;
+	while (lines[i] != 0) {
+		line = ft_strsplit(lines[i], ' ');
 		switch (obj_kind(line[0])) {
 			case OBJ_VERTEX:
-				obj_add_vertice(obj, (const char **)(line + 1));
+				obj_add_vertice(&vertlst, (const char **)(line + 1));
+				nvert++;
 				break ;
 			case OBJ_FACE:
 				obj_add_face(obj, (const char **)(line + 1));
@@ -225,13 +247,110 @@ int	obj_parse(t_obj *obj)
 			default:
 				break ;
 		}
-		j += 1;
+
+		for (int i = 0; line[i] != 0; i++) {
+			free(line[i]);
+		}
+		i += 1;
 	}
+	obj->vertices = vertlst_to_arr(&vertlst, nvert);
+	obj->nverts = nvert;
+	ft_lstdel(&vertlst, del_vertex);
 	return (0);
 }
 
-int	obj_triangulate(t_obj *obj)
+void	obj_triangulate_face(t_obj *obj, t_face *face)
 {
-	t_dlist *ears = NULL;
-	return (0);
+	t_list	*elem = NULL;
+	t_list	*triangles;
+
+	triangles = NULL;
+	if (face->nverts == 4) {
+		t_triangle *t1 = malloc(sizeof(*t1));
+		t_triangle *t2 = malloc(sizeof(*t2));
+
+		t1->vert[0] = face->indices[0].vert;
+		t1->vert[1] = face->indices[1].vert;
+		t1->vert[2] = face->indices[2].vert;
+
+		t2->vert[0] = face->indices[0].vert;
+		t2->vert[1] = face->indices[2].vert;
+		t2->vert[2] = face->indices[3].vert;
+
+		elem = ft_lstnew(NULL, 0);
+		elem->content = t1;
+		ft_lstpush(&triangles, elem);
+
+		elem = ft_lstnew(NULL, 0);
+		elem->content = t2;
+		ft_lstpush(&triangles, elem);
+
+//		fprintf(stderr, "T { %2lu, %2lu, %2lu }\n",
+//				t1->vert[0], t1->vert[1], t1->vert[2]);
+//		fprintf(stderr, "T { %2lu, %2lu, %2lu }\n",
+//				t2->vert[0], t2->vert[1], t2->vert[2]);
+
+		obj->ntriangles += 2;
+	}
+	else if (face->nverts == 3) {
+		t_triangle *t1 = malloc(sizeof(*t1));
+
+		t1->vert[0] = face->indices[0].vert;
+		t1->vert[1] = face->indices[1].vert;
+		t1->vert[2] = face->indices[2].vert;
+
+		elem = ft_lstnew(NULL, 0);
+		elem->content = t1;
+		ft_lstpush(&triangles, elem);
+//		fprintf(stderr, "T { %2lu, %2lu, %2lu }\n",
+//				t1->vert[0], t1->vert[1], t1->vert[2]);
+
+		obj->ntriangles += 1;
+	}
+	ft_lstpush(&obj->triangles, triangles);
+}
+
+void	obj_triangulate(t_obj *obj)
+{
+	t_list			*f = NULL;
+	t_face			*face = NULL;
+	
+	f = obj->faces;
+	while (f) {
+		face = f->content;
+		obj_triangulate_face(obj, face);
+		f = f->next;
+	}
+}
+
+unsigned int	*obj_get_indices(t_obj *obj)
+{
+	t_list			*t;
+	t_triangle		*tri;
+	unsigned int	*indices = NULL;
+	size_t			i;
+
+	indices = malloc(sizeof(*indices) * (obj->ntriangles * 3));
+	t = obj->triangles;
+	i = 0;
+	while (i < obj->ntriangles) {
+		tri = t->content;
+
+		size_t	j;
+		j = 0;
+		while (j < 3) {
+//			fprintf(stderr, "%lu %lu\n", i * 3, j);
+			indices[i * 3 + j] = tri->vert[j];
+			j += 1;
+		}
+
+		t = t->next;
+		i += 1;
+	}
+	return (indices);
+}
+
+float	*obj_get_vertices(t_obj *obj)
+{
+	return (float *)obj->vertices;
 }
